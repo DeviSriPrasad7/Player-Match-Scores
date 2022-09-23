@@ -26,27 +26,65 @@ const initializeDBAndServer = async () => {
 };
 initializeDBAndServer();
 
-const convertTodoDbObjectToResponseObject = (dbObject) => {
-  return {
-    id: dbObject.id,
-    todo: dbObject.todo,
-    priority: dbObject.priority,
-    status: dbObject.status,
-  };
+const hasPriorityAndStatusProperties = (requestQuery) => {
+  return requestQuery.priority !== undefined && requestQuery !== undefined;
+};
+
+const hasPriorityProperties = (requestQuery) => {
+  return requestQuery.priority !== undefined;
+};
+
+const hasStatusProperties = (requestQuery) => {
+  return requestQuery.status !== undefined;
 };
 
 app.get("/todos/", async (request, response) => {
-  const { status = "", priority = "", search_q = "" } = request.query;
-  const getTodo = `
-    SELECT
-      *
-    FROM
-      todo
-    WHERE
-      todo LIKE '%${search_q}%';`;
-  const todoArray = await db.all(getTodo);
-  console.log(todoArray);
-  response.send(
-    todoArray.map((eachTodo) => convertTodoDbObjectToResponseObject(eachTodo))
-  );
+  let data = null;
+  let getTodosQuery = "";
+  const { search_q = "", priority, status } = request.query;
+
+  switch (true) {
+    case hasPriorityAndStatusProperties(request.query):
+      getTodosQuery = `
+      SELECT
+        *
+      FROM
+        todo 
+      WHERE
+        todo LIKE '%${search_q}%'
+        AND status = '${status}'
+        AND priority = '${priority}';`;
+      break;
+    case hasPriorityProperties(request.query):
+      getTodosQuery = `
+      SELECT
+        *
+      FROM
+        todo 
+      WHERE
+        todo LIKE '%${search_q}%'
+        AND priority = '${priority}';`;
+      break;
+    case hasStatusProperties(request.query):
+      getTodosQuery = `
+      SELECT
+        *
+      FROM
+        todo 
+      WHERE
+        todo LIKE '%${search_q}%'
+        AND status = '${status}';`;
+      break;
+    default:
+      getTodosQuery = `
+      SELECT
+        *
+      FROM
+        todo 
+      WHERE
+        todo LIKE '%${search_q}%';`;
+  }
+
+  data = await db.all(getTodosQuery);
+  response.send(data);
 });
